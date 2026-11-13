@@ -13,6 +13,15 @@ namespace SoulsFormats
         /// Indicates the version, probably.
         /// </summary>
         public int Version { get; set; }
+        /// <summary>
+        /// True for the PS3 Dark Souls II network-test file, false for little-endian files.
+        /// </summary>
+        public bool BigEndian { get; set; }
+
+        /// <summary>
+        /// Unknown header value at offset 0x10. The PS3 network test stores 0x01000000; other known files store zero.
+        /// </summary>
+        public int Unk10 { get; set; }
 
         /// <summary>
         /// Indicates size of BTL Light in bytes.
@@ -46,12 +55,14 @@ namespace SoulsFormats
         protected override void Read(BinaryReaderEx br)
         {
             br.BigEndian = false;
+            BigEndian = br.GetInt32(0) == 0x02000000;
+            br.BigEndian = BigEndian;
 
             br.AssertInt32(2);
             Version = br.AssertInt32([1, 2, 5, 6, 15, 16, 18, 19]);
             int lightCount = br.ReadInt32();
             int namesLength = br.ReadInt32();
-            br.AssertInt32(0);
+            Unk10 = BigEndian ? br.AssertInt32([0, 0x01000000]) : br.AssertInt32(0);
             LightSize = br.AssertInt32([0xC0, 0xC8, 0xE8, 0xF0]);
             br.AssertPattern(0x24, 0x00);
             LongOffsets = br.VarintLong = LightSize != 0xC0;
@@ -68,14 +79,14 @@ namespace SoulsFormats
         /// </summary>
         protected override void Write(BinaryWriterEx bw)
         {
-            bw.BigEndian = false;
+            bw.BigEndian = BigEndian;
             bw.VarintLong = LongOffsets;
 
             bw.WriteInt32(2);
             bw.WriteInt32(Version);
             bw.WriteInt32(Lights.Count);
             bw.ReserveInt32("NamesLength");
-            bw.WriteInt32(0);
+            bw.WriteInt32(Unk10);
             bw.WriteInt32(LightSize);
             bw.WritePattern(0x24, 0x00);
 

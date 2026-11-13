@@ -80,7 +80,7 @@ public static class ParamLocator
         }
 #endif
 
-        return Path.Join(srcFolder, "Defs");
+        return Path.Join(srcFolder, project.Descriptor.IsDS2NetworkTest ? "Network Test Defs" : "Defs");
     }
 
     public static string GetParammetaDir(ProjectEntry project)

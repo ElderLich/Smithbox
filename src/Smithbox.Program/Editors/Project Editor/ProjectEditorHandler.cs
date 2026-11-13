@@ -221,9 +221,14 @@ public class ProjectEditorHandler : IDisposable
             tasks.Add(_timeActDataTask);
         }
 
+        // DS2 map generators depend on parameter data even when the Param Editor itself is disabled.
+        var needsMapParams = Project.Descriptor.EnableMapEditor
+            && Project.Descriptor.ProjectType is ProjectType.DS2 or ProjectType.DS2S
+            && initType is ProjectInitType.ProjectDefined or ProjectInitType.MapEditorOnly;
+
         // Param
-        if (Project.Descriptor.EnableParamEditor &&
-            initType is ProjectInitType.ProjectDefined or ProjectInitType.ParamEditorOnly)
+        if (needsMapParams || (Project.Descriptor.EnableParamEditor &&
+            initType is ProjectInitType.ProjectDefined or ProjectInitType.ParamEditorOnly))
         {
             ParamData = new(Project);
             _paramDataTask = ParamData.Setup();
@@ -378,7 +383,8 @@ public class ProjectEditorHandler : IDisposable
             firstEditor ??= TimeActEditor;
         }
 
-        if (ParamData != null)
+        if (ParamData != null && Project.Descriptor.EnableParamEditor &&
+            initType is ProjectInitType.ProjectDefined or ProjectInitType.ParamEditorOnly)
         {
             ParamEditor = new ParamEditorScreen(Project);
             firstEditor ??= ParamEditor;

@@ -142,7 +142,7 @@ public class MapUniverse : IUniverse
 
         if (View.Project.Descriptor.ProjectType is ProjectType.DS2S or ProjectType.DS2)
         {
-            if (Project.Handler.ParamEditor == null)
+            if (Project.Handler.ParamData?.PrimaryBank?.Params == null)
             {
                 Smithbox.LogError(this, LOC.Get("MAP_Universe_Log_DS2_Params_Not_Ready_for_Map"));
                 return false;
@@ -886,6 +886,11 @@ public class MapUniverse : IUniverse
     /// </summary>
     public void SaveMap(MapContainer map)
     {
+        if (Project.Descriptor.IsDS2NetworkTest)
+        {
+            Smithbox.LogError(this, LOC.Get("PROJECT_DS2_Network_Test_Read_Only"));
+            return;
+        }
         if (!CFG.Current.MapEditor_Allow_Unmodified_Save && map.DirtyFiles is MapFileType.None)
         {
             Smithbox.Log(this, LOC.Get("EDITOR_Data_Skip_File_Save", map.Name));

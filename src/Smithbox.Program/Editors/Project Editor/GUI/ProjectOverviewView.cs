@@ -41,7 +41,7 @@ public class ProjectOverviewView
         ImGui.TextColored(UI.Current.ImGui_AliasName_Text, descriptor.ProjectName);
 
         ImGui.SameLine();
-        ImGui.TextDisabled($"· {LOC.Get(descriptor.ProjectType.GetDisplayName())} ·");
+        ImGui.TextDisabled($"· {ProjectUtils.GetGameDisplayName(descriptor)} ·");
 
         ImGui.SameLine();
         var (status, statusColor) = GetStatus(project);

@@ -727,6 +727,12 @@ public class MapEditorScreen : EditorScreen
     /// <param name="skipCheck">Save without the save check, as Save Anyway does</param>
     public void Save(bool autoSave = false, bool skipCheck = false)
     {
+        if (Project.Descriptor.IsDS2NetworkTest)
+        {
+            if (!autoSave)
+                Smithbox.LogError(this, LOC.Get("PROJECT_DS2_Network_Test_Read_Only"));
+            return;
+        }
         var activeView = ViewHandler.ActiveView;
 
         if (activeView == null)

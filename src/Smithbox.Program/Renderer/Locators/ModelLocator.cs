@@ -116,10 +116,10 @@ public static class ModelLocator
                 ret.AssetVirtualPath = $@"map/{mapid}/{colType}/lo/l{model.Substring(1)}.hkx";
             }
         }
-        else if (project.Descriptor.ProjectType == ProjectType.DS2S)
+        else if (project.Descriptor.ProjectType == ProjectType.DS2S || project.Descriptor.IsDS2NetworkTest)
         {
             // model/map/h10_02_00_00.hkxbhd holds h02_0300, model/map/l10_02_00_00.hkxbhd its l02_0300
-            if (targetType is HavokCollisionType.Low && !isConnectCollision)
+            if (targetType is HavokCollisionType.Low && (!isConnectCollision || project.Descriptor.IsDS2NetworkTest))
             {
                 ret.AssetName = model;
                 ret.AssetVirtualPath = $@"map/{mapid}/{colType}/lo/l{model.Substring(1)}.hkx.dcx";

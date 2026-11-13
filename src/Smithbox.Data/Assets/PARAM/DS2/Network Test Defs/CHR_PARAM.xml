@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PARAMDEF XmlVersion="0">
+    <ParamType>CHR_PARAM</ParamType>
+    <DataVersion>36</DataVersion>
+    <BigEndian>true</BigEndian>
+    <Unicode>true</Unicode>
+    <FormatVersion>105</FormatVersion>
+    <Fields>
+        <!-- Offset 0 resolves all 47 distinct map-referenced enemies to shipped c#### assets. -->
+        <Field Def="s32 modelId"><DisplayName>Model ID</DisplayName></Field>
+        <Field Def="dummy8 unknown_0004[316]"><DisplayName>Unverified network-test data</DisplayName></Field>
+    </Fields>
+</PARAMDEF>

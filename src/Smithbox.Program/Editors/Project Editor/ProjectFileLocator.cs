@@ -115,6 +115,14 @@ public class ProjectFileLocator : IDisposable
             Directory.CreateDirectory(projectLocalFolder);
         }
 
+        if (Project.Descriptor.IsDS2NetworkTest)
+        {
+            FileDictionary = BuildNetworkTestFileDictionary();
+            UnvalidatedFileDictionary = new();
+            CompileDictionaries();
+            return;
+        }
+
         var folder = Path.Join(AppContext.BaseDirectory, "Assets", "File Dictionaries");
         var file = "";
 
@@ -244,6 +252,51 @@ public class ProjectFileLocator : IDisposable
         return;
     }
 
+    /// <summary>
+    /// The Network Test ships a subset of retail DS2 and has different paths. List the files it actually has,
+    /// overlaying project files, rather than advertising maps from the retail file dictionary.
+    /// </summary>
+    private FileDictionary BuildNetworkTestFileDictionary()
+    {
+        if (!DS2NetworkTestData.TryResolveDataRoots(Project.Descriptor.DataPath, out var userDirectory, out var archiveDirectory))
+            throw new InvalidDataException(LOC.Get("PROJECT_DS2_Network_Test_Data_Missing"));
+
+        var entries = new Dictionary<string, FileDictionaryEntry>(StringComparer.OrdinalIgnoreCase);
+        foreach (var root in new[] { archiveDirectory, userDirectory, Project.Descriptor.ProjectPath })
+        {
+            if (!Directory.Exists(root))
+                continue;
+
+            foreach (var path in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+            {
+                var relativePath = "/" + Path.GetRelativePath(root, path).Replace('\\', '/');
+                if (IsExcludedFromScan(relativePath)
+                    || relativePath.StartsWith("/GameData-bhd/", StringComparison.OrdinalIgnoreCase)
+                    || Path.GetFileName(path).StartsWith("_yabber", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var filename = Path.GetFileNameWithoutExtension(path);
+                var extension = Path.GetExtension(path).TrimStart('.').ToLowerInvariant();
+                if (extension == "dcx")
+                {
+                    extension = Path.GetExtension(filename).TrimStart('.').ToLowerInvariant();
+                    filename = Path.GetFileNameWithoutExtension(filename);
+                }
+
+                entries[relativePath] = new FileDictionaryEntry
+                {
+                    Archive = "GameData",
+                    Path = relativePath,
+                    Folder = Path.GetDirectoryName(relativePath)?.Replace('\\', '/').ToLowerInvariant(),
+                    Filename = filename,
+                    Extension = extension,
+                    Validated = true
+                };
+            }
+        }
+
+        return new FileDictionary { Entries = entries.Values.ToHashSet() };
+    }
     private static readonly string[] ScanExcludedExtensions = [".bak", ".prev", ".temp"];
 
     private static bool IsExcludedFromScan(string relativePath)

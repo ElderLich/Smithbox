@@ -185,6 +185,14 @@ public class ProjectEntry
         else if (!Directory.Exists(Descriptor.DataPath))
             reason = LOC.Get("PROJECT_Setup_Failed_Init_Bad_Data_Path", Descriptor.DataPath);
 
+        if (reason == null && Descriptor.IsDS2NetworkTest)
+        {
+            if (!DS2NetworkTestData.TryResolveDataRoots(Descriptor.DataPath, out var userDirectory, out _))
+                reason = LOC.Get("PROJECT_DS2_Network_Test_Data_Missing");
+            else if (ProjectUtils.IsSameOrInsideDirectory(Descriptor.ProjectPath, userDirectory))
+                reason = LOC.Get("PROJECT_DS2_Network_Test_Project_In_Data");
+        }
+
         if (reason == null)
             return true;
 
@@ -475,6 +483,8 @@ public class ProjectEntry
 
     private void PerformAutoSave()
     {
+        if (Descriptor.IsDS2NetworkTest)
+            return;
         if (CFG.Current.Project_Enable_Automatic_Save)
         {
             if (Handler != null)

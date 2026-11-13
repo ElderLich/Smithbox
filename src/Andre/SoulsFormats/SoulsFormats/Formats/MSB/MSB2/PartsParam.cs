@@ -154,7 +154,7 @@ namespace SoulsFormats
                         return Objects.EchoAdd(new Part.Object(br));
 
                     case PartType.Collision:
-                        return Collisions.EchoAdd(new Part.Collision(br));
+                        return Collisions.EchoAdd(new Part.Collision(br, IsNetworkTest));
 
                     case PartType.Navmesh:
                         return Navmeshes.EchoAdd(new Part.Navmesh(br));
@@ -239,8 +239,11 @@ namespace SoulsFormats
 
             private protected virtual void DeepCopyTo(Part part) { }
 
-            private protected Part(BinaryReaderEx br)
+            private protected bool IsNetworkTest { get; private set; }
+
+            private protected Part(BinaryReaderEx br, bool networkTest = false)
             {
+                IsNetworkTest = networkTest;
                 long start = br.Position;
                 long nameOffset = br.ReadVarint();
                 br.AssertByte((byte)Type);
@@ -567,7 +570,7 @@ namespace SoulsFormats
                 /// </summary>
                 public Collision() : base("hXX_XXXX_XXXX") { }
 
-                internal Collision(BinaryReaderEx br) : base(br) { }
+                internal Collision(BinaryReaderEx br, bool networkTest = false) : base(br, networkTest) { }
 
                 private protected override void ReadTypeData(BinaryReaderEx br)
                 {
@@ -612,7 +615,8 @@ namespace SoulsFormats
                     br.AssertByte(0);
                     br.AssertByte(0);
                     UnkT44 = br.ReadInt32();
-                    br.AssertPattern(0x10, 0x00);
+                    // Version 2 collision data is 0x50 bytes; retail adds eight reserved bytes.
+                    br.AssertPattern(IsNetworkTest ? 0x08 : 0x10, 0x00);
                 }
 
                 private protected override void WriteTypeData(BinaryWriterEx bw)

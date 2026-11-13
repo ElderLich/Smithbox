@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PARAMDEF XmlVersion="0">
+    <ParamType>GENERATOR_PARAM</ParamType>
+    <DataVersion>13</DataVersion>
+    <BigEndian>true</BigEndian>
+    <Unicode>true</Unicode>
+    <FormatVersion>105</FormatVersion>
+    <Fields>
+        <Field Def="dummy8 unknown_0000[8]"><DisplayName>Unverified network-test data</DisplayName></Field>
+        <!-- Offset 8 uniquely resolves all 99 generator rows to GeneratorRegistParam IDs. -->
+        <Field Def="s32 GeneratorRegistParam"><DisplayName>Generator registration ID</DisplayName></Field>
+        <Field Def="dummy8 unknown_000c[116]"><DisplayName>Unverified network-test data</DisplayName></Field>
+    </Fields>
+</PARAMDEF>

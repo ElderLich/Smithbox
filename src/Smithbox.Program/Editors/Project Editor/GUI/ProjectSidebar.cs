@@ -195,7 +195,7 @@ public class ProjectSidebar
         var descriptor = project.Descriptor;
 
         return LOC.Get("PROJECT_List_Entry_TT",
-            LOC.Get(descriptor.ProjectType.GetDisplayName()),
+            ProjectUtils.GetGameDisplayName(descriptor),
             descriptor.ProjectPath,
             descriptor.DataPath);
     }

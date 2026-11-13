@@ -2,12 +2,20 @@
 using SoulsFormats;
 using StudioCore.Editors.ParamEditor;
 using StudioCore.Logger;
+using StudioCore.Utilities;
 
 namespace StudioCore.Application;
 
 public class ProjectUtils
 {
     private static readonly byte[] ZeroIv = new byte[16];
+
+    public static string GetGameDisplayName(ProjectDescriptor descriptor)
+    {
+        return descriptor.IsDS2NetworkTest
+            ? LOC.Get("PROJECT_DS2_Network_Test_Name")
+            : LOC.Get(descriptor.ProjectType.GetDisplayName());
+    }
     public static string GetGameDirectory(ProjectEntry curProject)
     {
         return GetGameDirectory(curProject.Descriptor.ProjectType);
@@ -116,6 +124,8 @@ public class ProjectUtils
     /// <returns></returns>
     public static VirtualFileSystem GetFilesystemForWrite(ProjectEntry curProject)
     {
+        if (curProject.Descriptor.IsDS2NetworkTest)
+            throw new InvalidOperationException(LOC.Get("PROJECT_DS2_Network_Test_Read_Only"));
         if (curProject.VFS.ProjectFS is not EmptyVirtualFileSystem)
             return curProject.VFS.ProjectFS;
 
@@ -161,6 +171,12 @@ public class ProjectUtils
     public static bool WriteWithBackup<T>(ProjectEntry curProject, VirtualFileSystem vanillaFs, VirtualFileSystem toFs, string assetPath,
         T item, ProjectType gameType = ProjectType.Undefined, params object[] writeparms) where T : SoulsFile<T>, new()
     {
+        if (curProject.Descriptor.IsDS2NetworkTest)
+        {
+            Smithbox.LogError<ProjectUtils>(LOC.Get("PROJECT_DS2_Network_Test_Read_Only"));
+            return false;
+        }
+
         try
         {
             if(CFG.Current.Project_Enable_Comprehensive_Backups)

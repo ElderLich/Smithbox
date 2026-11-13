@@ -40,7 +40,7 @@ public class ProjectVFS : IDisposable
         // Project File System
         if (Directory.Exists(Project.Descriptor.ProjectPath))
         {
-            ProjectFS = new RealVirtualFileSystem(Project.Descriptor.ProjectPath, false);
+            ProjectFS = new RealVirtualFileSystem(Project.Descriptor.ProjectPath, Project.Descriptor.IsDS2NetworkTest);
             fileSystems.Add(ProjectFS);
 
             if (Project.Descriptor.ProjectType is ProjectType.DES)
@@ -51,6 +51,23 @@ public class ProjectVFS : IDisposable
         else
         {
             ProjectFS = EmptyVirtualFileSystem.Instance;
+        }
+
+        if (Project.Descriptor.IsDS2NetworkTest)
+        {
+            if (!DS2NetworkTestData.TryResolveDataRoots(Project.Descriptor.DataPath, out var userDirectory, out var archiveDirectory))
+                throw new InvalidDataException(LOC.Get("PROJECT_DS2_Network_Test_Data_Missing"));
+
+            // Keep the supplied dump read-only. All edits belong in a separate project directory.
+            if (ProjectUtils.IsSameOrInsideDirectory(Project.Descriptor.ProjectPath, userDirectory))
+                throw new InvalidDataException(LOC.Get("PROJECT_DS2_Network_Test_Project_In_Data"));
+
+            VanillaRealFS = new RealVirtualFileSystem(userDirectory, true);
+            VanillaBinderFS = new RealVirtualFileSystem(archiveDirectory, true);
+            VanillaFS = new CompundVirtualFileSystem([VanillaRealFS, VanillaBinderFS]);
+            fileSystems.Add(VanillaFS);
+            FS = new CompundVirtualFileSystem(fileSystems);
+            return;
         }
 
         // Vanilla File System

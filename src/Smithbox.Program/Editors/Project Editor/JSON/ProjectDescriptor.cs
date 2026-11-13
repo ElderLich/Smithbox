@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace StudioCore.Application;
@@ -14,6 +15,11 @@ public class ProjectDescriptor
     public string ProjectPath = "";
     public string DataPath = "";
     public ProjectType ProjectType = ProjectType.DS1;
+    public DS2DataProfile DS2DataProfile = DS2DataProfile.Retail;
+
+    [JsonIgnore]
+    public bool IsDS2NetworkTest => ProjectType is ProjectType.DS2
+        && DS2DataProfile is global::StudioCore.Application.DS2DataProfile.PS3NetworkTest;
 
     public bool ImportedParamRowNames = false;
     public bool AutoSelect = false;
@@ -52,6 +58,7 @@ public class ProjectDescriptor
         ProjectPath = newDescriptor.ProjectPath;
         DataPath = newDescriptor.DataPath;
         ProjectType = newDescriptor.ProjectType;
+        DS2DataProfile = newDescriptor.DS2DataProfile;
 
         AutoSelect = newDescriptor.AutoSelect;
         ImportedParamRowNames = newDescriptor.ImportedParamRowNames;
@@ -84,6 +91,7 @@ public class ProjectDescriptor
         ProjectPath = Path.GetDirectoryName(projectPath);
         DataPath = legacyDescriptor.GameRoot;
         ProjectType = legacyDescriptor.GameType;
+        DS2DataProfile = legacyDescriptor.DS2DataProfile;
 
         // Left to the auto-load assignment on load, so only one project ends up marked
         AutoSelect = false;
@@ -114,6 +122,7 @@ public class ProjectDescriptor
         ProjectPath = Path.GetDirectoryName(projectPath);
         DataPath = legacyDescriptor.GameRoot;
         ProjectType = legacyDescriptor.GameType;
+        DS2DataProfile = legacyDescriptor.DS2DataProfile;
 
         AutoSelect = false;
         ImportedParamRowNames = false;
@@ -196,6 +205,7 @@ public class ProjectDescriptor
             ProjectPath = this.ProjectPath,
             DataPath = this.DataPath,
             ProjectType = this.ProjectType,
+            DS2DataProfile = this.DS2DataProfile,
 
             AutoSelect = this.AutoSelect,
             ImportedParamRowNames = this.ImportedParamRowNames,
@@ -258,6 +268,23 @@ public class ProjectDescriptor
         EnableSoundEditor = true;
         EnableTimeActEditor = true;
         EnableExternalMaterialData = true;
+
+        if (IsDS2NetworkTest)
+        {
+            // Only these data loaders have been checked against the supplied PS3 test build.
+            // Map, Model, Param, Texture Viewer and File Browser remain available.
+            EnableTextEditor = false;
+            EnableGparamEditor = false;
+            EnableMaterialEditor = false;
+            EnableAnimEditor = false;
+            EnableHavokEditor = false;
+            EnableFxEditor = false;
+            EnableBehaviorEditor = false;
+            EnableEmevdEditor = false;
+            EnableEsdEditor = false;
+            EnableSoundEditor = false;
+            EnableTimeActEditor = false;
+        }
     }
 }
 
@@ -266,6 +293,7 @@ public class LegacyProjectDescriptor
     public string ProjectName { get; set; }
     public string GameRoot { get; set; }
     public ProjectType GameType { get; set; }
+    public DS2DataProfile DS2DataProfile { get; set; }
 
     public List<string> PinnedParams { get; set; }
     public Dictionary<string, List<int>> PinnedRows { get; set; }
@@ -282,6 +310,7 @@ public class LegacyProjectDescriptor
         ProjectName = curProject.Descriptor.ProjectName;
         GameRoot = curProject.Descriptor.DataPath;
         GameType = curProject.Descriptor.ProjectType;
+        DS2DataProfile = curProject.Descriptor.DS2DataProfile;
 
         PinnedParams = new();
         PinnedRows = new();
@@ -312,6 +341,7 @@ public class LegacyProjectDescriptorAlt
     public string ProjectName { get; set; }
     public string GameRoot { get; set; }
     public ProjectType GameType { get; set; }
+    public DS2DataProfile DS2DataProfile { get; set; }
 
     public List<string> PinnedParams { get; set; }
     public List<int> PinnedRows { get; set; }
@@ -328,6 +358,7 @@ public class LegacyProjectDescriptorAlt
         ProjectName = curProject.Descriptor.ProjectName;
         GameRoot = curProject.Descriptor.DataPath;
         GameType = curProject.Descriptor.ProjectType;
+        DS2DataProfile = curProject.Descriptor.DS2DataProfile;
 
         PinnedParams = new();
         PinnedRows = new();

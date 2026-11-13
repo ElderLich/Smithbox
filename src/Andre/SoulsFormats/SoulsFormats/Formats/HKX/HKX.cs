@@ -56,7 +56,7 @@ namespace SoulsFormats
             Header.Magic1 = br.AssertUInt32(0x10C0C010);
             //Header.UserTag = br.AssertInt32(0);
             Header.UserTag = br.ReadInt32();
-            Header.Version = br.AssertInt32([0x05, 0x08, 0x0B]);
+            Header.Version = br.AssertInt32([0x05, 0x08, 0x09, 0x0B]);
             if (Header.Version == 0x05)
             {
                 Variation = HKXVariation.HKXDeS;
@@ -64,6 +64,11 @@ namespace SoulsFormats
             else if (Header.Version == 0x08)
             {
                 Variation = HKXVariation.HKXDS1;
+            }
+            else if (Header.Version == 0x09)
+            {
+                // DS2's hk_2012 packfiles retain the short section headers, including the PS3 network test.
+                Variation = HKXVariation.HKXDS2;
             }
             Header.PointerSize = br.AssertByte([4, 8]);
             Header.Endian = br.AssertByte([0, 1]);
@@ -1320,8 +1325,16 @@ namespace SoulsFormats
             {
                 ClassNames = new List<HKXClassName>();
                 OffsetClassNamesMap = new Dictionary<uint, HKXClassName>();
-                while (br.ReadUInt16() != 0xFFFF)
+                // An aligned class table has no padding or sentinel after its final name.
+                while (br.Position < br.Length)
                 {
+                    if (br.Length - br.Position == 1)
+                    {
+                        br.AssertByte(0xFF);
+                        break;
+                    }
+                    if (br.ReadUInt16() == 0xFFFF)
+                        break;
                     br.Position -= 2;
                     uint stringStart = (uint)br.Position + 5;
                     var className = new HKXClassName(br);

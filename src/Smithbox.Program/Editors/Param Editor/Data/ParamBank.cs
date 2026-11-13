@@ -120,6 +120,12 @@ public class ParamBank : IDisposable
     {
         await Task.Yield();
 
+        if (Project.Descriptor.IsDS2NetworkTest)
+        {
+            Smithbox.LogWarning(this, "DS2 PS3 Network Test parameter support is read-only; no parameter files were written.");
+            return false;
+        }
+
         if (_params == null)
         {
             return false;
@@ -946,6 +952,9 @@ public class ParamBank : IDisposable
     #region Dark Souls II
     private bool LoadParameters_DS2()
     {
+        if (Project.Descriptor.IsDS2NetworkTest)
+            return LoadParameters_DS2NetworkTest();
+
         var successfulLoad = true;
 
         var paramPath = $@"enc_regulation.bnd.dcx";
@@ -1070,6 +1079,83 @@ public class ParamBank : IDisposable
         return successfulLoad;
     }
 
+    /// <summary>
+    /// The PS3 network test has older, big-endian parameter layouts. Load only the map tables whose
+    /// layouts are explicitly supported; retail definitions must never be applied speculatively.
+    /// </summary>
+    private bool LoadParameters_DS2NetworkTest()
+    {
+        const string regulationPath = "regulation.bnd.dcx";
+        EnemyParam = null;
+        _paramVersion = 0; // The network-test binder uses a date string, not a retail regulation version.
+
+        if (!TargetFS.FileExists(regulationPath))
+        {
+            Smithbox.LogError(this, $"DS2 PS3 Network Test regulation was not found: {regulationPath}");
+            return false;
+        }
+
+        var successfulLoad = true;
+        var omittedRegulationTables = 0;
+        var omittedLooseTables = 0;
+
+        void LoadTable(string fileName, Memory<byte> bytes)
+        {
+            try
+            {
+                var param = DS2NetworkTestParams.Read(fileName, bytes, Project.Handler.ParamData.ParamDefs);
+                var key = DS2NetworkTestParams.GetKey(fileName);
+                _params[key] = param;
+                if (key == "EnemyParam")
+                    EnemyParam = param;
+            }
+            catch (Exception e)
+            {
+                successfulLoad = false;
+                Smithbox.LogError(this, $"Failed to read supported PS3 Network Test parameter {fileName} in {Name}.", e);
+            }
+        }
+
+        try
+        {
+            using var binder = BND4.Read(TargetFS.GetFile(regulationPath).GetData());
+            foreach (var entry in binder.Files)
+            {
+                var fileName = Path.GetFileName(entry.Name.Replace('\\', '/'));
+                if (!fileName.EndsWith(".param", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (DS2NetworkTestParams.IsSupported(fileName))
+                    LoadTable(fileName, entry.Bytes);
+                else
+                    omittedRegulationTables++;
+            }
+        }
+        catch (Exception e)
+        {
+            Smithbox.LogError(this, $"Failed to read PS3 Network Test regulation in {Name}.", e);
+            return false;
+        }
+
+        foreach (var path in ProjectUtils.GetLooseParamsInDir(TargetFS, ""))
+        {
+            if (DS2NetworkTestParams.IsSupported(path))
+                LoadTable(path, TargetFS.GetFile(path).GetData());
+            else
+                omittedLooseTables++;
+        }
+
+        if (EnemyParam == null)
+        {
+            Smithbox.LogError(this, $"PS3 Network Test EnemyParam was unavailable in {Name}; enemy models cannot be resolved.");
+            successfulLoad = false;
+        }
+
+        Smithbox.Log(this, $"PS3 Network Test ({Name}): loaded {_params.Count} supported map parameter tables. " +
+            $"Omitted {omittedRegulationTables} regulation and {omittedLooseTables} loose tables with unverified layouts. " +
+            "Parameter support is read-only; opaque fields retain their original bytes.");
+        return successfulLoad;
+    }
     private bool SaveParameters_DS2()
     {
         // No need to duplicate code here
@@ -3037,7 +3123,9 @@ public class ParamBank : IDisposable
     public string GetChrIDForEnemy(long enemyID)
     {
         Param.Row enemy = EnemyParam?[(int)enemyID];
-        return enemy != null ? $@"{enemy.GetCellHandleOrThrow("modelId").Value:D4}" : null;
+        // A failed definition load leaves no columns. Map viewing can continue without that enemy's model.
+        var modelId = enemy?["modelId"];
+        return modelId.HasValue ? $"{modelId.Value.Value:D4}" : null;
     }
 
     public string GetKeyForParam(Param param)

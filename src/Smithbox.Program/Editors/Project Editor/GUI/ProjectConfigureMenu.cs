@@ -174,6 +174,9 @@ public class ProjectConfigureMenu
 
     public void UseSteamDataPathAction()
     {
+        if (Descriptor.IsDS2NetworkTest)
+            return;
+
         var steamPath = GetSteamDataPath(Descriptor.ProjectType);
 
         if (!string.IsNullOrEmpty(steamPath))
@@ -242,6 +245,9 @@ public class ProjectConfigureMenu
         if (!Directory.Exists(Descriptor.DataPath))
             return LOC.Get("PROJECT_Field_Data_Path_Not_Found");
 
+        if (Descriptor.IsDS2NetworkTest && !DS2NetworkTestData.TryResolveDataRoots(Descriptor.DataPath, out _, out _))
+            return LOC.Get("PROJECT_DS2_Network_Test_Data_Missing");
+
         return null;
     }
 
@@ -252,6 +258,11 @@ public class ProjectConfigureMenu
 
         if (!Directory.Exists(Descriptor.ProjectPath))
             return LOC.Get("PROJECT_Field_Project_Path_Not_Found");
+
+        if (Descriptor.IsDS2NetworkTest
+            && DS2NetworkTestData.TryResolveDataRoots(Descriptor.DataPath, out var userDirectory, out _)
+            && ProjectUtils.IsSameOrInsideDirectory(Descriptor.ProjectPath, userDirectory))
+            return LOC.Get("PROJECT_DS2_Network_Test_Project_In_Data");
 
         return null;
     }
@@ -310,7 +321,7 @@ public class ProjectConfigureMenu
     {
         var orchestrator = Smithbox.Orchestrator;
 
-        var key = $"{Descriptor.ProjectPath}|{Descriptor.DataPath}|{Descriptor.ProjectType}|{Project?.Descriptor?.ProjectGUID}|{orchestrator.Projects.Count}";
+        var key = $"{Descriptor.ProjectPath}|{Descriptor.DataPath}|{Descriptor.ProjectType}|{Descriptor.DS2DataProfile}|{Project?.Descriptor?.ProjectGUID}|{orchestrator.Projects.Count}";
 
         if (key == _warningsKey)
             return;
@@ -340,7 +351,7 @@ public class ProjectConfigureMenu
             }
         }
 
-        if (Directory.Exists(dataPath) && GameExecutables.TryGetValue(Descriptor.ProjectType, out var exe))
+        if (!Descriptor.IsDS2NetworkTest && Directory.Exists(dataPath) && GameExecutables.TryGetValue(Descriptor.ProjectType, out var exe))
         {
             if (!File.Exists(Path.Combine(dataPath, exe)))
             {
@@ -450,10 +461,17 @@ public class ProjectConfigureMenu
 
                 if (ImGui.Selectable($"{displayName}##projectType_{type}", type == Descriptor.ProjectType))
                 {
-                    Descriptor.ProjectType = type;
+                    if (type != Descriptor.ProjectType)
+                    {
+                        var wasNetworkTest = Descriptor.IsDS2NetworkTest;
+                        Descriptor.ProjectType = type;
+                        Descriptor.DS2DataProfile = DS2DataProfile.Retail;
+                        if (wasNetworkTest)
+                            Descriptor.EnableAllEditors();
+                    }
 
                     // Only fill in an empty data directory, so a path the user entered isn't replaced
-                    var steamPath = GetSteamDataPath(type);
+                    var steamPath = Descriptor.IsDS2NetworkTest ? null : GetSteamDataPath(type);
 
                     if (string.IsNullOrWhiteSpace(Descriptor.DataPath) && !string.IsNullOrEmpty(steamPath))
                     {
@@ -467,6 +485,34 @@ public class ProjectConfigureMenu
         GUI.Tooltip(LOC.Get("PROJECT_Configuration_Header_Project_Type_TT"));
 
         FieldMessages(issue, null);
+
+        if (Descriptor.ProjectType is ProjectType.DS2)
+        {
+            GUI.Spacer();
+            GUI.SimpleHeader(LOC.Get("PROJECT_DS2_Profile_Header"), LOC.Get("PROJECT_DS2_Network_Test_Data_Tooltip"));
+            ImGui.SetNextItemWidth(-1);
+            var preview = Descriptor.IsDS2NetworkTest
+                ? LOC.Get("PROJECT_DS2_Profile_Network_Test")
+                : LOC.Get("PROJECT_DS2_Profile_Retail");
+            if (ImGui.BeginCombo("##ds2DataProfile", preview))
+            {
+                if (ImGui.Selectable(LOC.Get("PROJECT_DS2_Profile_Retail"), !Descriptor.IsDS2NetworkTest)
+                    && Descriptor.IsDS2NetworkTest)
+                {
+                    Descriptor.DS2DataProfile = DS2DataProfile.Retail;
+                    Descriptor.EnableAllEditors();
+                }
+                if (ImGui.Selectable(LOC.Get("PROJECT_DS2_Profile_Network_Test"), Descriptor.IsDS2NetworkTest)
+                    && !Descriptor.IsDS2NetworkTest)
+                {
+                    Descriptor.DS2DataProfile = DS2DataProfile.PS3NetworkTest;
+                    Descriptor.EnableAllEditors();
+                }
+                ImGui.EndCombo();
+            }
+            if (Descriptor.IsDS2NetworkTest)
+                GUI.WrappedYellowText(LOC.Get("PROJECT_DS2_Network_Test_Read_Only"));
+        }
     }
 
     /// <summary>
@@ -479,9 +525,11 @@ public class ProjectConfigureMenu
             LOC.Get("PROJECT_Configuration_Header_Project_Type_TT"));
 
         ImGui.AlignTextToFramePadding();
-        ImGui.TextUnformatted(LOC.Get(Descriptor.ProjectType.GetDisplayName()));
+        ImGui.TextUnformatted(ProjectUtils.GetGameDisplayName(Descriptor));
 
         ImGui.TextDisabled(LOC.Get("PROJECT_Field_Type_Fixed"));
+        if (Descriptor.IsDS2NetworkTest)
+            GUI.WrappedYellowText(LOC.Get("PROJECT_DS2_Network_Test_Read_Only"));
     }
 
     public void DisplayDataDirectoryField(string title)
@@ -497,7 +545,7 @@ public class ProjectConfigureMenu
 
         FieldMessages(issue, warnings);
 
-        var steamDataPath = GetSteamDataPath(Descriptor.ProjectType);
+        var steamDataPath = Descriptor.IsDS2NetworkTest ? null : GetSteamDataPath(Descriptor.ProjectType);
 
         GUI.ConditionalMultiButtonInput("dataDirActions",
             "selectDir",
@@ -704,6 +752,16 @@ public class ProjectConfigureMenu
     /// </summary>
     private void EditorToggle(string locKey, ref bool value, bool isSupported)
     {
+        if (Descriptor.IsDS2NetworkTest)
+        {
+            isSupported &= locKey is "PROJECT_Configuration_Checkbox_Visual_Map_Editor"
+                or "PROJECT_Configuration_Checkbox_Model_Editor"
+                or "PROJECT_Configuration_Checkbox_Param_Editor"
+                or "PROJECT_Configuration_Checkbox_Texture_Viewer"
+                or "PROJECT_Configuration_Checkbox_File_Browser"
+                or "PROJECT_Configuration_Checkbox_Material_Data";
+        }
+
         if (!isSupported)
         {
             var unsupported = false;
@@ -727,6 +785,12 @@ public class ProjectConfigureMenu
 
     private void SetAllEditors(bool enabled)
     {
+        if (enabled && Descriptor.IsDS2NetworkTest)
+        {
+            Descriptor.EnableAllEditors();
+            return;
+        }
+
         Descriptor.EnableMapEditor = enabled;
         Descriptor.EnableModelEditor = enabled;
         Descriptor.EnableTimeActEditor = enabled;
@@ -747,6 +811,9 @@ public class ProjectConfigureMenu
 
     public string GetDataDirectoryTooltip()
     {
+        if (Descriptor.IsDS2NetworkTest)
+            return LOC.Get("PROJECT_DS2_Network_Test_Data_Tooltip");
+
         var tooltip = LOC.Get("PROJECT_Configuration_Header_Data_Directory_TT_Base");
         if (Descriptor.ProjectType is ProjectType.DES)
         {

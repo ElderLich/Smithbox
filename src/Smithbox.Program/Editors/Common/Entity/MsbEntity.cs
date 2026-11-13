@@ -279,7 +279,8 @@ public class MsbEntity : Entity
         if (EntityHelper.IsPartConnectCollision(this))
         {
             var name = ModelLocator.MapModelNameToAssetName(curProject, amapid, modelName);
-            asset = ModelLocator.GetMapCollisionModel(curProject, amapid, name);
+            asset = ModelLocator.GetMapCollisionModel(curProject, amapid, name,
+                isConnectCollision: curProject.Descriptor.IsDS2NetworkTest);
 
             RenderSceneMesh = CreateCollisionMesh(asset, true);
         }

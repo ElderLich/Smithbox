@@ -1,6 +1,38 @@
 {
   "Entries": [
     {
+      "Key": "PROJECT_DS2_Profile_Header",
+      "Text": "Game version"
+    },
+    {
+      "Key": "PROJECT_DS2_Profile_Retail",
+      "Text": "Retail (PC)"
+    },
+    {
+      "Key": "PROJECT_DS2_Profile_Network_Test",
+      "Text": "PS3 Network Test (browse only)"
+    },
+    {
+      "Key": "PROJECT_DS2_Network_Test_Name",
+      "Text": "Dark Souls II: PS3 Network Test"
+    },
+    {
+      "Key": "PROJECT_DS2_Network_Test_Read_Only",
+      "Text": "PS3 Network Test support is browse-only. Saving game files is disabled until its layouts have been fully verified."
+    },
+    {
+      "Key": "PROJECT_DS2_Network_Test_Data_Missing",
+      "Text": "Select the PS3 Network Test package, USRDIR, or extracted GameData-bhd directory. USRDIR must contain regulation.bnd.dcx and GameData-bhd must contain the extracted map, model, and param directories. Extract GameData.bhd/GameData.bdt with Yabber first if needed."
+    },
+    {
+      "Key": "PROJECT_DS2_Network_Test_Data_Tooltip",
+      "Text": "Select the PS3 Network Test package, USRDIR, or GameData-bhd directory. Smithbox reads loose USRDIR files together with the extracted GameData-bhd archive."
+    },
+    {
+      "Key": "PROJECT_DS2_Network_Test_Project_In_Data",
+      "Text": "Choose a separate project directory outside the PS3 Network Test's USRDIR so its source files remain unchanged."
+    },
+    {
       "Key": "PROJECT_Configuration_Global_Context_Load",
       "Text": "Load"
     },

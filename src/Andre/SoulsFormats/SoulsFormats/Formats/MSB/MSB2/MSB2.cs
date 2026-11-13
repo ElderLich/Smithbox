@@ -28,6 +28,12 @@ namespace SoulsFormats
             /// 64-bit format for SotFS on all platforms.
             /// </summary>
             DarkSouls2Scholar,
+
+            /// <summary>
+            /// 32-bit big-endian format used by the PS3 network test (section version 2).
+            /// Reading is supported; writing this pre-release layout is not supported.
+            /// </summary>
+            DarkSouls2NetworkTest,
         }
 
         /// <summary>
@@ -88,7 +94,14 @@ namespace SoulsFormats
             br.BigEndian = false;
             string magic = br.GetASCII(0, 4);
             int modelVersion = br.GetInt32(0x10);
-            return magic == "MSB " && modelVersion == 5;
+            if (magic == "MSB " && modelVersion == 5)
+                return true;
+
+            // The network test has no MSB header; identify both its version and section name.
+            br.BigEndian = true;
+            int nameOffset = br.GetInt32(4);
+            return br.GetInt32(0) == 2 && nameOffset >= 0x10 && nameOffset <= br.Length - 30
+                && br.GetUTF16(nameOffset) == "MODEL_PARAM_ST";
         }
 
         /// <summary>
@@ -112,19 +125,22 @@ namespace SoulsFormats
             {
                 Format = MSBFormat.DarkSouls2BE;
                 br.BigEndian = true;
+                if (br.GetInt32(0) == 2)
+                    Format = MSBFormat.DarkSouls2NetworkTest;
             }
 
+            bool networkTest = Format == MSBFormat.DarkSouls2NetworkTest;
             Entries entries;
             Models = new ModelParam();
-            entries.Models = Models.Read(br);
+            entries.Models = Models.Read(br, networkTest);
             Events = new EventParam();
-            entries.Events = Events.Read(br);
+            entries.Events = Events.Read(br, networkTest);
             Regions = new PointParam();
-            entries.Regions = Regions.Read(br);
-            new RouteParam().Read(br);
-            new LayerParam().Read(br);
+            entries.Regions = Regions.Read(br, networkTest);
+            new RouteParam().Read(br, networkTest);
+            new LayerParam().Read(br, networkTest);
             Parts = new PartsParam();
-            entries.Parts = Parts.Read(br);
+            entries.Parts = Parts.Read(br, networkTest);
             PartPoses = new MapstudioPartsPose().Read(br);
             entries.BoneNames = new MapstudioBoneName().Read(br);
 
@@ -146,6 +162,8 @@ namespace SoulsFormats
         /// </summary>
         protected override void Write(BinaryWriterEx bw)
         {
+            if (Format == MSBFormat.DarkSouls2NetworkTest)
+                throw new NotSupportedException("Writing PS3 DS2 network-test maps is not supported; this format is browse-only.");
             Entries entries;
             entries.Models = Models.GetEntries();
             entries.Events = Events.GetEntries();
@@ -231,9 +249,12 @@ namespace SoulsFormats
             internal abstract string Name { get; }
             internal abstract int Version { get; }
 
-            internal List<T> Read(BinaryReaderEx br)
+            private protected bool IsNetworkTest { get; private set; }
+
+            internal List<T> Read(BinaryReaderEx br, bool networkTest = false)
             {
-                br.AssertInt32(Version);
+                IsNetworkTest = networkTest;
+                br.AssertInt32(networkTest && Version == 5 ? 2 : Version);
 
                 int offsetCount;
                 long nameOffset;
