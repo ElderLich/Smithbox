@@ -64,7 +64,7 @@ public static class DS2NetworkTestParams
 
         var param = Param.Read(bytes);
         if (!param.BigEndian || param.ParamdefFormatVersion != 255 || param.ParamType != layout.Type ||
-            param.ParamdefDataVersion != layout.Version || param.RowSize != layout.RowSize)
+            param.ParamdefDataVersion != layout.Version || (param.Rows.Count != 0 && param.RowSize != layout.RowSize))
         {
             throw new InvalidDataException($"Unexpected PS3 Network Test layout in {fileName}: " +
                 $"type {param.ParamType}, data version {param.ParamdefDataVersion}, row size {param.RowSize}, " +
@@ -74,6 +74,25 @@ public static class DS2NetworkTestParams
 
         if (!definitions.TryGetValue(layout.Type, out var definition) || definition.DataVersion != layout.Version)
             throw new InvalidDataException($"Missing PS3 Network Test definition for {layout.Type} version {layout.Version}.");
+
+        if (param.Rows.Count == 0)
+        {
+            // An empty PARAM has no row offsets from which to infer a stride. Its header still
+            // has to match the known NT layout above; use only that layout's verified definition.
+            // This also permits editor-only inspection projects to suppress unrelated event tables.
+            var empty = new Param(definition, param.BigEndian, 0)
+            {
+                Format2D = param.Format2D,
+                Format2E = param.Format2E,
+                ParamdefFormatVersion = param.ParamdefFormatVersion,
+                ParamdefDataVersion = param.ParamdefDataVersion,
+                Unk06 = param.Unk06,
+                ParamType = param.ParamType
+            };
+            if (empty.RowSize != layout.RowSize)
+                throw new InvalidDataException($"Unexpected empty-table definition size in {fileName}: {empty.RowSize}; expected {layout.RowSize}.");
+            return empty;
+        }
 
         param.ApplyParamdef(definition, 0, fileName);
         return param;

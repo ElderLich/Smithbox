@@ -3752,9 +3752,18 @@ public class FlverResource : IResource, IDisposable
         br.ReadInt32();
         br.AssertInt32(0);
 
-        br.AssertInt16([0, 1, 2, 3, 4, 5]);  // unknown
-        var specialModifier = br.AssertInt16([0, -32768]);
-        IsSpeedtree = specialModifier == -32768;
+        // Before 0x20014 this is one 32-bit value, including big-endian DS2 models.
+        // Reading two shorts rejects their nonzero low half as a SpeedTree modifier.
+        if (version >= 0x20014)
+        {
+            br.AssertInt16([0, 1, 2, 3, 4, 5]); // unknown
+            IsSpeedtree = br.AssertInt16([0, -32768]) == -32768;
+        }
+        else
+        {
+            br.AssertInt32([0, 1, 2, 3, 4, 5]); // unknown
+            IsSpeedtree = false;
+        }
         br.AssertInt32(0);
         br.AssertInt32(0);
         br.AssertInt32([0x0, 0x10]);
